@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"io/ioutil"
 
-	"github.com/rhdedgar/clamd/models"
+	"github.com/rhdedgar/clamsig-puller/models"
 )
 
 var (

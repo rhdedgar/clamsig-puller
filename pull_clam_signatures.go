@@ -9,8 +9,8 @@ import (
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/aws/aws-sdk-go/service/s3/s3manager"
-	"github.com/rhdedgar/clamd/config"
-	"github.com/rhdedgar/clamd/models"
+	"github.com/rhdedgar/clamsig-puller/config"
+	"github.com/rhdedgar/clamsig-puller/models"
 )
 
 func downloadSignatures(configFile *models.ConfigFile) {
