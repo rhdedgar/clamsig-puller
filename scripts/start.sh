@@ -16,7 +16,7 @@ if [ "$INIT_CONTAINER" = "true" ] ; then
   echo
   echo "The INIT_CONTAINER variable has been set. This container will attempt to populate the pod's shared volume with clam DBs and config files before exiting."
   echo
-  /usr/local/bin/clamsig-puller
+  /bin/clamsig-puller
   echo "Finished pulling signatures and config files - exiting."
   exit 0
 fi
@@ -27,4 +27,4 @@ echo '/usr/bin/clamsig-puller'
 echo
 echo 'Every 12 hours, check if there are any databases in our mirror that are newer than what is already on disk.'
 echo '----------------'
-/usr/local/bin/loop.sh 43200 /usr/local/bin/clamsig-puller
+/usr/local/bin/loop.sh 43200 /bin/clamsig-puller
