@@ -17,7 +17,8 @@ if [ "$INIT_CONTAINER" = "true" ] ; then
   echo "The INIT_CONTAINER variable has been set. This container will attempt to populate the pod's shared volume with clam DBs and config files before exiting."
   echo
   /usr/local/bin/clamsig-puller &>/dev/null
-  return 0
+  echo "Finished pulling signatures and config files - exiting."
+  exit 0
 fi
 
 echo This container hosts the following applications:
