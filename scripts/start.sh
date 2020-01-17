@@ -12,6 +12,14 @@ if [ "$OO_PAUSE_ON_START" = "true" ] ; then
   done
 fi
 
+if [ "$INIT_CONTAINER" = "true" ] ; then
+  echo
+  echo "The INIT_CONTAINER variable has been set. This container will attempt to populate the pod's shared volume with clam DBs and config files before exiting."
+  echo
+  /usr/local/bin/clamsig-puller &>/dev/null
+  return 0
+fi
+
 echo This container hosts the following applications:
 echo
 echo '/usr/bin/clamsig-puller'
