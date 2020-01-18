@@ -11,7 +11,7 @@ import (
 var (
 	// ClamInstallDir is the directory to which we have installed clam,
 	// and is the target dir for our downloads.
-	ClamInstallDir = "/clam"
+	ClamInstallDir = "/clam/"
 	// ConfigPath is the path to the config file containing secrets needed by the application.
 	ConfigPath = "/secrets/clam_update_config.json"
 

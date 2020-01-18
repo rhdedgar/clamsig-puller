@@ -37,7 +37,7 @@ func downloadSignatures(configFile *models.ConfigFile) {
 				if os.IsNotExist(err) || fileStat.ModTime().Before(*item.LastModified) {
 					newFile, err := os.Create(config.ClamInstallDir + *item.Key)
 					if err != nil {
-						fmt.Printf("Unable to open file %q, %v", item, err)
+						fmt.Printf("Unable to open file %q, %v\n", item, err)
 					}
 
 					defer newFile.Close()
@@ -48,13 +48,14 @@ func downloadSignatures(configFile *models.ConfigFile) {
 							Key:    aws.String(*item.Key),
 						})
 					if err != nil {
-						fmt.Printf("Unable to download item %q, %v", item, err)
+						fmt.Printf("Unable to download item %q, %v\n", item, err)
+					} else {
+						fmt.Println("Downloaded the following:")
+						fmt.Println("Name:         ", *item.Key)
+						fmt.Println("Last modified:", *item.LastModified)
+						fmt.Println("Size:         ", *item.Size, "bytes")
+						fmt.Println("")
 					}
-					fmt.Println("Downloaded the following:")
-					fmt.Println("Name:         ", *item.Key)
-					fmt.Println("Last modified:", *item.LastModified)
-					fmt.Println("Size:         ", *item.Size, "bytes")
-					fmt.Println("")
 				} else if err != nil {
 					fmt.Println("Hit an issue opening the file:", err)
 				}
