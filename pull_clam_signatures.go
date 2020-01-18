@@ -2,7 +2,9 @@ package main
 
 import (
 	"fmt"
+	"math/rand"
 	"os"
+	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/credentials"
@@ -35,6 +37,13 @@ func downloadSignatures(configFile *models.ConfigFile) {
 			if *item.Key == localItem {
 				fileStat, err := os.Stat(config.ClamInstallDir + localItem)
 				if os.IsNotExist(err) || fileStat.ModTime().Before(*item.LastModified) {
+
+					// Adding a little jitter, so that there's not such a thundering herd
+					// of network traffic upon updating.
+					rand.Seed(time.Now().UnixNano())
+					n := rand.Intn(5)
+					time.Sleep(time.Duration(n) * time.Second)
+
 					newFile, err := os.Create(config.ClamInstallDir + *item.Key)
 					if err != nil {
 						fmt.Printf("Unable to open file %q, %v\n", item, err)
