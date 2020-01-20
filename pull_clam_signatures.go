@@ -74,6 +74,8 @@ func downloadSignatures(configFile *models.ConfigFile) {
 }
 
 func main() {
+	fmt.Println("ClamAV signature and config updater v0.0.1")
+
 	newConfig := &config.ConfigFile
 	downloadSignatures(newConfig)
 }
