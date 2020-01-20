@@ -38,16 +38,15 @@ func downloadSignatures(configFile *models.ConfigFile) {
 			if *item.Key == localItem {
 				fileStat, err := os.Stat(filepath.Join(config.ClamInstallDir, localItem))
 				if os.IsNotExist(err) || fileStat.ModTime().Before(*item.LastModified) {
-
 					// Adding a little jitter, so that there's not such a thundering herd
 					// of network traffic upon updating.
 					rand.Seed(time.Now().UnixNano())
 					n := rand.Intn(5)
 					time.Sleep(time.Duration(n) * time.Second)
 
-					newFile, err := os.Create(filepath.Join(config.ClamInstallDir, *item.Key))
+					newFile, err := os.Create(filepath.Join(config.ClamInstallDir, localItem))
 					if err != nil {
-						fmt.Printf("Unable to open file %q, %v\n", item, err)
+						fmt.Printf("Unable to open file %q\n, %v\n", item, err)
 					}
 
 					defer newFile.Close()
@@ -58,7 +57,7 @@ func downloadSignatures(configFile *models.ConfigFile) {
 							Key:    aws.String(*item.Key),
 						})
 					if err != nil {
-						fmt.Printf("Unable to download item %q, %v\n", item, err)
+						fmt.Printf("Unable to download item %q\n, %v\n", item, err)
 					} else {
 						fmt.Println("Downloaded the following:")
 						fmt.Println("Name:         ", *item.Key)
