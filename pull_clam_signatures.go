@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"math/rand"
 	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
@@ -35,7 +36,7 @@ func downloadSignatures(configFile *models.ConfigFile) {
 	for _, item := range resp.Contents {
 		for _, localItem := range configFile.ClamConfigFiles {
 			if *item.Key == localItem {
-				fileStat, err := os.Stat(config.ClamInstallDir + localItem)
+				fileStat, err := os.Stat(filepath.Join(config.ClamInstallDir, localItem))
 				if os.IsNotExist(err) || fileStat.ModTime().Before(*item.LastModified) {
 
 					// Adding a little jitter, so that there's not such a thundering herd
@@ -44,7 +45,7 @@ func downloadSignatures(configFile *models.ConfigFile) {
 					n := rand.Intn(5)
 					time.Sleep(time.Duration(n) * time.Second)
 
-					newFile, err := os.Create(config.ClamInstallDir + *item.Key)
+					newFile, err := os.Create(filepath.Join(config.ClamInstallDir, *item.Key))
 					if err != nil {
 						fmt.Printf("Unable to open file %q, %v\n", item, err)
 					}
