@@ -88,7 +88,6 @@ func DownloadSignatures(svc s3iface.S3API, resp *s3.ListObjectsV2Output) error {
 						fmt.Println("Unable to download item:", item)
 						return err
 					}
-					fmt.Println("DL end")
 
 					fmt.Println("Downloaded the following:")
 					fmt.Println("Name:         ", *item.Key)
@@ -107,7 +106,7 @@ func DownloadSignatures(svc s3iface.S3API, resp *s3.ListObjectsV2Output) error {
 }
 
 func main() {
-	fmt.Println("ClamAV signature and config updater v0.0.2")
+	fmt.Println("ClamAV signature and config updater v0.0.4")
 
 	sess, err := GetSession(configFile)
 	if err != nil {

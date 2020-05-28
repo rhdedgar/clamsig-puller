@@ -1,6 +1,6 @@
 #!/bin/bash -e
 
-echo "clamsig-puller v0.0.3"
+echo "clamsig-puller v0.0.4"
 
 # This is useful so we can debug containers running inside of OpenShift that are
 # failing to start properly.
