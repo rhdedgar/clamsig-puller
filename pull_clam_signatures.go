@@ -11,25 +11,52 @@ import (
 	"github.com/aws/aws-sdk-go/aws/credentials"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
+	"github.com/aws/aws-sdk-go/service/s3/s3iface"
 	"github.com/aws/aws-sdk-go/service/s3/s3manager"
 	"github.com/rhdedgar/clamsig-puller/config"
 	"github.com/rhdedgar/clamsig-puller/models"
 )
 
-func downloadSignatures(configFile *models.ConfigFile) {
+var (
+	configFile = &config.ConfigFile
+)
+
+// GetSession returns an AWS S3 session.
+func GetSession(configFile *models.ConfigFile) (*session.Session, error) {
 	sess, err := session.NewSession(&aws.Config{
 		Region:      aws.String(configFile.ClamBucketRegion),
 		Credentials: credentials.NewStaticCredentials(configFile.ClamBucketKeyID, configFile.ClamBucketKey, ""),
 	})
-
-	svc := s3.New(sess)
-
-	resp, err := svc.ListObjectsV2(&s3.ListObjectsV2Input{Bucket: aws.String(configFile.ClamMirrorBucket)})
 	if err != nil {
-		fmt.Printf("Unable to list items in bucket %q, %v", configFile.ClamMirrorBucket, err)
+		fmt.Println("Error getting session:", err)
+		return &session.Session{}, err
 	}
 
-	downloader := s3manager.NewDownloader(sess)
+	return sess, nil
+}
+
+// GetService returns a new S3 client service from an existing session.
+func GetService(sess *session.Session) *s3.S3 {
+	svc := s3.New(sess)
+
+	return svc
+}
+
+// ListBucketObjects returns a list of an AWS s3 bucket's objects.
+func ListBucketObjects(svc s3iface.S3API) (*s3.ListObjectsV2Output, error) {
+	resp, err := svc.ListObjectsV2(&s3.ListObjectsV2Input{Bucket: aws.String(configFile.ClamMirrorBucket)})
+	if err != nil {
+		fmt.Printf("Unable to list items in bucket %q", configFile.ClamMirrorBucket)
+		return &s3.ListObjectsV2Output{}, err
+	}
+
+	return resp, nil
+}
+
+// DownloadSignatures compares signature databases on disk with those in the clam mirror bucket.
+// It will download copies of the databases if found to be newer than what's on disk.
+func DownloadSignatures(svc s3iface.S3API, resp *s3.ListObjectsV2Output) error {
+	downloader := s3manager.NewDownloaderWithClient(svc)
 
 	// Loop through bucket contents, and compare with our json array. If file is a match, then
 	// check if doesn't exist, and check if the bucket's file is newer. Download it in those cases.
@@ -46,7 +73,8 @@ func downloadSignatures(configFile *models.ConfigFile) {
 
 					newFile, err := os.Create(filepath.Join(config.ClamInstallDir, localItem))
 					if err != nil {
-						fmt.Printf("Unable to open file %q\n, %v\n", item, err)
+						fmt.Println("Unable to open file:", item)
+						return err
 					}
 
 					defer newFile.Close()
@@ -57,25 +85,45 @@ func downloadSignatures(configFile *models.ConfigFile) {
 							Key:    aws.String(*item.Key),
 						})
 					if err != nil {
-						fmt.Printf("Unable to download item %q\n, %v\n", item, err)
-					} else {
-						fmt.Println("Downloaded the following:")
-						fmt.Println("Name:         ", *item.Key)
-						fmt.Println("Last modified:", *item.LastModified)
-						fmt.Println("Size:         ", *item.Size, "bytes")
-						fmt.Println("")
+						fmt.Println("Unable to download item:", item)
+						return err
 					}
+					fmt.Println("DL end")
+
+					fmt.Println("Downloaded the following:")
+					fmt.Println("Name:         ", *item.Key)
+					fmt.Println("Last modified:", *item.LastModified)
+					fmt.Println("Size:         ", *item.Size, "bytes")
+					fmt.Println("")
+
 				} else if err != nil {
-					fmt.Println("Hit an issue opening the file:", err)
+					fmt.Println("Hit an issue opening the file:")
+					return err
 				}
 			}
 		}
 	}
+	return nil
 }
 
 func main() {
-	fmt.Println("ClamAV signature and config updater v0.0.1")
+	fmt.Println("ClamAV signature and config updater v0.0.2")
 
-	newConfig := &config.ConfigFile
-	downloadSignatures(newConfig)
+	sess, err := GetSession(configFile)
+	if err != nil {
+		fmt.Println("Error returned from GetSession:", err)
+	}
+
+	svc := GetService(sess)
+
+	resp, err := ListBucketObjects(svc)
+	if err != nil {
+		fmt.Println("Error returned from ListBucketObjects:", err)
+	}
+
+	err = DownloadSignatures(svc, resp)
+
+	if err != nil {
+		fmt.Println("Error returned from DownloadSignatures:", err)
+	}
 }
