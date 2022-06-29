@@ -23,10 +23,29 @@ if [ "$INIT_CONTAINER" = "true" ] ; then
   exit 0
 fi
 
-echo This container hosts the following applications:
+declare update_interval
+
+if [[ ! $UPDATE_INTERVAL ]] ; then
+  update_interval=$UPDATE_INTERVAL
+else
+  update_interval=43200
+fi
+
+echo 'This container hosts the following applications:'
 echo
 echo '/usr/bin/clamsig-puller'
 echo
-echo 'Every 12 hours, check if there are any databases in our mirror that are newer than what is already on disk.'
+echo "Every $update_interval seconds, check if there are any databases in our mirror that are newer than what is already on disk."
 echo '----------------'
-/usr/local/bin/loop.sh 43200 /bin/clamsig-puller
+# /usr/local/bin/loop.sh 43200 /bin/clamsig-puller
+while true; do
+  if /usr/bin/clamsig-puller; then
+      echo "clamsig-puller returned successfully."
+      echo "sleeping $update_interval seconds."
+      sleep $update_interval
+  else
+    echo "clamsig-puller exited with code: $?."
+    echo "sleeping for 10 seconds before trying again."
+    sleep 10
+  fi
+done

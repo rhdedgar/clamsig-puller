@@ -92,6 +92,7 @@ func dlToDisk(item string, downloader *s3manager.Downloader) (string, error) {
 		fmt.Println("Unable to download item:", item)
 		return "", err
 	}
+
 	r := bytes.NewReader(buf.Bytes())
 
 	zr, err := gzip.NewReader(r)
@@ -157,35 +158,39 @@ func DownloadSignatures(svc s3iface.S3API, resp *s3.ListObjectsV2Output) error {
 	// check if doesn't exist, and check if the bucket's file is newer. Download it in those cases.
 	for _, item := range resp.Contents {
 		if strings.HasSuffix(*item.Key, ".gz") {
-			splitItem := strings.Split(*item.Key, ".gz")
-			baseItem := splitItem[0]
+			for i := 0; i < 5; {
+				splitItem := strings.Split(*item.Key, ".gz")
+				baseItem := splitItem[0]
 
-			// Adding a little jitter, so that there's not such a thundering herd
-			// of network traffic upon updating.
-			rand.Seed(time.Now().UnixNano())
-			n := rand.Intn(5)
-			time.Sleep(time.Duration(n) * time.Second)
+				// Adding a little jitter, so that there's not such a thundering herd
+				// of network traffic upon updating.
+				rand.Seed(time.Now().UnixNano())
+				n := rand.Intn(i + 1)
+				time.Sleep(time.Duration(n*10) * time.Second)
 
-			bChecksum, err := dlChecksumToString(baseItem+"_checksum.txt", downloader)
-			if err != nil {
-				fmt.Printf("Hit an issue downloading checksum file: %v\n", err)
-				fmt.Println("Proceeding without checksum file.")
+				bChecksum, err := dlChecksumToString(baseItem+"_checksum.txt", downloader)
+				if err != nil {
+					fmt.Printf("Hit an issue downloading checksum file: %v\n", err)
+					fmt.Println("Proceeding without checksum file.")
+				}
+
+				fChecksum, err := dlToDisk(*item.Key, downloader)
+				if err != nil {
+					fmt.Printf("Skipping due to an issue downloading file: %v\n", err)
+					continue
+				}
+
+				if bChecksum == "" && bChecksum != fChecksum {
+					fmt.Println("Checksum mismatch; Possibly corrupted database file, trying again.")
+				} else {
+					fmt.Println("Downloaded the following:")
+					fmt.Println("Name:         ", *item.Key)
+					fmt.Println("Last modified:", *item.LastModified)
+					fmt.Println("Size:         ", *item.Size, "bytes")
+					fmt.Println("Continuing")
+					i = 5
+				}
 			}
-
-			fChecksum, err := dlToDisk(*item.Key, downloader)
-			if err != nil {
-				fmt.Printf("Skipping due to an issue downloading file: %v\n", err)
-				continue
-			}
-
-			if bChecksum != fChecksum {
-				fmt.Println("Checksum mismatch")
-			}
-			fmt.Println("Downloaded the following:")
-			fmt.Println("Name:         ", *item.Key)
-			fmt.Println("Last modified:", *item.LastModified)
-			fmt.Println("Size:         ", *item.Size, "bytes")
-			fmt.Println("")
 		}
 	}
 	return nil
@@ -197,6 +202,7 @@ func main() {
 	sess, err := GetSession(&datastores.AppSecrets)
 	if err != nil {
 		fmt.Println("Error returned from GetSession:", err)
+		os.Exit(1)
 	}
 
 	svc := GetService(sess)
@@ -204,11 +210,14 @@ func main() {
 	resp, err := ListBucketObjects(svc)
 	if err != nil {
 		fmt.Println("Error returned from ListBucketObjects:", err)
+		os.Exit(1)
 	}
 
 	err = DownloadSignatures(svc, resp)
-
 	if err != nil {
 		fmt.Println("Error returned from DownloadSignatures:", err)
+		os.Exit(1)
 	}
+
+	fmt.Println("Finished running DownloadSignatures function.")
 }
