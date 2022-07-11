@@ -5,7 +5,8 @@ RUN microdnf install -y golang
 ENV GOBIN=/bin \
     GOPATH=/go
 
-RUN /usr/bin/go install
+COPY ./ ./
+RUN /usr/bin/go install .
 
 
 # begin run container definition

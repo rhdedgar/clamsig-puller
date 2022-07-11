@@ -21,10 +21,8 @@ import (
 	"compress/gzip"
 	"crypto/sha256"
 	"encoding/hex"
-	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"math/rand"
 	"os"
 	"path/filepath"
@@ -136,6 +134,7 @@ func dlChecksumToString(item string, downloader *s3manager.Downloader) (string, 
 	return string(buf.Bytes()), nil
 }
 
+/*
 func loadConfigFile(filePath string, dest interface{}) error {
 	fileBytes, err := ioutil.ReadFile(filePath)
 	if err != nil {
@@ -148,6 +147,7 @@ func loadConfigFile(filePath string, dest interface{}) error {
 	}
 	return nil
 }
+*/
 
 // DownloadSignatures compares signature databases on disk with those in the clam mirror bucket.
 // It will download copies of the databases if found to be newer than what's on disk.
@@ -158,37 +158,39 @@ func DownloadSignatures(svc s3iface.S3API, resp *s3.ListObjectsV2Output) error {
 	// check if doesn't exist, and check if the bucket's file is newer. Download it in those cases.
 	for _, item := range resp.Contents {
 		if strings.HasSuffix(*item.Key, ".gz") {
-			for i := 0; i < 5; {
-				splitItem := strings.Split(*item.Key, ".gz")
-				baseItem := splitItem[0]
+			splitItem := strings.Split(*item.Key, ".gz")
+			baseItem := splitItem[0]
 
-				// Adding a little jitter, so that there's not such a thundering herd
-				// of network traffic upon updating.
-				rand.Seed(time.Now().UnixNano())
-				n := rand.Intn(i + 1)
-				time.Sleep(time.Duration(n*10) * time.Second)
+			if _, ok := datastores.AppSecrets.ClamConfigFileMap[baseItem]; ok {
+				for i := 0; i < 5; {
+					// Adding a little jitter, so that there's not such a thundering herd
+					// of network traffic upon updating.
+					rand.Seed(time.Now().UnixNano())
+					n := rand.Intn(i + 1)
+					time.Sleep(time.Duration(n*10) * time.Second)
 
-				bChecksum, err := dlChecksumToString(baseItem+"_checksum.txt", downloader)
-				if err != nil {
-					fmt.Printf("Hit an issue downloading checksum file: %v\n", err)
-					fmt.Println("Proceeding without checksum file.")
-				}
+					bChecksum, err := dlChecksumToString(baseItem+"_checksum.txt", downloader)
+					if err != nil {
+						fmt.Printf("Hit an issue downloading checksum file: %v\n", err)
+						fmt.Println("Proceeding without checksum file.")
+					}
 
-				fChecksum, err := dlToDisk(*item.Key, downloader)
-				if err != nil {
-					fmt.Printf("Skipping due to an issue downloading file: %v\n", err)
-					continue
-				}
+					fChecksum, err := dlToDisk(*item.Key, downloader)
+					if err != nil {
+						fmt.Printf("Skipping due to an issue downloading file: %v\n", err)
+						continue
+					}
 
-				if bChecksum == "" && bChecksum != fChecksum {
-					fmt.Println("Checksum mismatch; Possibly corrupted database file, trying again.")
-				} else {
-					fmt.Println("Downloaded the following:")
-					fmt.Println("Name:         ", *item.Key)
-					fmt.Println("Last modified:", *item.LastModified)
-					fmt.Println("Size:         ", *item.Size, "bytes")
-					fmt.Println("Continuing")
-					i = 5
+					if bChecksum == "" && bChecksum != fChecksum {
+						fmt.Println("Checksum mismatch; Possibly corrupted database file, trying again.")
+					} else {
+						fmt.Println("Downloaded the following:")
+						fmt.Println("Name:         ", *item.Key)
+						fmt.Println("Last modified:", *item.LastModified)
+						fmt.Println("Size:         ", *item.Size, "bytes")
+						fmt.Println("Continuing")
+						i = 5
+					}
 				}
 			}
 		}
@@ -197,7 +199,7 @@ func DownloadSignatures(svc s3iface.S3API, resp *s3.ListObjectsV2Output) error {
 }
 
 func main() {
-	fmt.Println("ClamAV signature and config updater v0.0.5")
+	fmt.Println("ClamAV signature and config updater v0.0.6")
 
 	sess, err := GetSession(&datastores.AppSecrets)
 	if err != nil {
@@ -212,6 +214,8 @@ func main() {
 		fmt.Println("Error returned from ListBucketObjects:", err)
 		os.Exit(1)
 	}
+
+	fmt.Println("Number of items the bucket contains: ", len(resp.Contents))
 
 	err = DownloadSignatures(svc, resp)
 	if err != nil {

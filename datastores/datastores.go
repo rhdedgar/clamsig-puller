@@ -69,6 +69,7 @@ func init() {
 		AppSecrets.ClamConfigDir = AppSecrets.ClamConfigDir + "/"
 	}
 
+	AppSecrets.ClamConfigFileMap = make(map[string]interface{}, len(AppSecrets.ClamConfigFiles))
 	for _, item := range AppSecrets.ClamConfigFiles {
 		AppSecrets.ClamConfigFileMap[item] = struct{}{}
 	}
